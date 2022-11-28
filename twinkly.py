@@ -21,7 +21,7 @@ AUTH_HEADER = 'X-Auth-Token'
 AUTHENTICATION_TOKEN = 'authentication_token'
 CHALLENGE_RESPONSE = 'challenge-response'
 MODE = 'mode'
-MODE_ON = 'movie'
+MODE_ON = 'color'
 MODE_OFF = 'off'
 
 HEADERS = {'Content-Type': 'application/json'}
