@@ -28,8 +28,21 @@ MODE_OFF = 'off'
 
 HEADERS = {'Content-Type': 'application/json'}
 LOGIN_DATA = {'challenge': 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8='}
-TURN_ON_DATA = {MODE: MODE_ON}
-TURN_OFF_DATA = {MODE: MODE_OFF}
+
+STATES_FILE = '/tmp/twinklystates.json'
+
+
+def load_saved_states():
+    try:
+        with open(STATES_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+
+def save_states(states):
+    with open(STATES_FILE, 'w') as f:
+        json.dump(states, f)
 
 
 def debug(msg):
@@ -68,17 +81,23 @@ def post(url, data, headers=None):
 
 
 def turn_on():
-    post(MODE_URL, TURN_ON_DATA)
+    saved_states = load_saved_states()
+    last_mode = saved_states.get(ARG_IP, {}).get('mode', MODE_ON)
+    post(MODE_URL, {MODE: last_mode})
     print(1)
 
 
 def turn_off():
-    post(MODE_URL, TURN_OFF_DATA)
+    post(MODE_URL, {MODE: MODE_OFF})
     print(0)
 
 
 def get_state():
     mode_data = get(MODE_URL, HEADERS)
+
+    saved_states = load_saved_states()
+    saved_states.setdefault(ARG_IP, {})['mode'] = mode_data[MODE]
+    save_states(saved_states)
 
     if mode_data[MODE] != MODE_OFF:
         print(1)
