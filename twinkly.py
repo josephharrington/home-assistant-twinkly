@@ -46,7 +46,7 @@ def save_states(states):
 
 
 def debug(msg):
-    if os.environ['TWINKLY_DEBUG']:
+    if os.environ.get('TWINKLY_DEBUG'):
         if isinstance(msg, dict):
             msg = pformat(msg)
         print(msg, file=sys.stderr)
