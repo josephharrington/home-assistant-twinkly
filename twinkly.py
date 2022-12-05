@@ -1,7 +1,9 @@
+import os
 import sys
 import json
 import urllib.request
 import codecs
+from pprint import pformat
 
 ARG_ON = 'on'
 ARG_OFF = 'off'
@@ -30,50 +32,53 @@ TURN_ON_DATA = {MODE: MODE_ON}
 TURN_OFF_DATA = {MODE: MODE_OFF}
 
 
-def format_data(data):
+def debug(msg):
+    if os.environ['TWINKLY_DEBUG']:
+        if isinstance(msg, dict):
+            msg = pformat(msg)
+        print(msg, file=sys.stderr)
+
+
+def _format_data(data):
     return json.dumps(data).encode('utf8')
 
 
-def process_request(request):
-    return urllib.request.urlopen(request)
+def _req(url, data=None, headers=None):
+    request = urllib.request.Request(
+        url=url,
+        headers=headers or HEADERS,
+        data=_format_data(data) if data else None
+    )
+    response = urllib.request.urlopen(request)
+    debug(f'{"POST" if data else "GET"} {url} {response.code}')
+    reader = codecs.getreader('utf-8')
+    data = json.load(reader(response))
+
+    debug(data)
+    debug('\n')
+    return data
 
 
-def process_request_json(request):
-    login_response = process_request(request)
-    reader = codecs.getreader("utf-8")
-    return json.load(reader(login_response))
+def get(url, headers=None):
+    return _req(url, headers=headers)
 
 
-# login to api - get challenge response and auth token
-loginRequest = urllib.request.Request(url=LOGIN_URL, headers=HEADERS, data=format_data(LOGIN_DATA))
-loginData = process_request_json(loginRequest)
-
-challengeResponse = loginData[CHALLENGE_RESPONSE]
-authToken = loginData[AUTHENTICATION_TOKEN]
-
-HEADERS[AUTH_HEADER] = authToken
-verifyData = {CHALLENGE_RESPONSE: challengeResponse}
-
-# verify token by responding with challenge response
-verifyRequest = urllib.request.Request(url=VERIFY_URL, headers=HEADERS, data=format_data(verifyData))
-verifyData = process_request_json(verifyRequest)
+def post(url, data, headers=None):
+    return _req(url, data, headers=headers)
 
 
 def turn_on():
-    on_request = urllib.request.Request(url=MODE_URL, headers=HEADERS, data=format_data(TURN_ON_DATA))
-    process_request(on_request)
+    post(MODE_URL, TURN_ON_DATA)
     print(1)
 
 
 def turn_off():
-    off_request = urllib.request.Request(url=MODE_URL, headers=HEADERS, data=format_data(TURN_OFF_DATA))
-    process_request(off_request)
+    post(MODE_URL, TURN_OFF_DATA)
     print(0)
 
 
 def get_state():
-    mode_request = urllib.request.Request(url=MODE_URL, headers=HEADERS)
-    mode_data = process_request_json(mode_request)
+    mode_data = get(MODE_URL, HEADERS)
 
     if mode_data[MODE] != MODE_OFF:
         print(1)
@@ -82,9 +87,22 @@ def get_state():
 
 
 def main():
+    # login to api - get challenge response and auth token
+    login_data = post(LOGIN_URL, LOGIN_DATA)
+    auth_token = login_data[AUTHENTICATION_TOKEN]
+    HEADERS[AUTH_HEADER] = auth_token
+
+    # verify token by responding with challenge response
+    verify_data = {CHALLENGE_RESPONSE: login_data[CHALLENGE_RESPONSE]}
+    post(VERIFY_URL, verify_data)
+
     if ARG_ACTION == ARG_ON:
         turn_on()
     elif ARG_ACTION == ARG_OFF:
         turn_off()
     elif ARG_ACTION == ARG_STATE:
         get_state()
+
+
+if __name__ == '__main__':
+    main()
