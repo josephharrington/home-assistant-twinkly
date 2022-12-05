@@ -94,10 +94,12 @@ def turn_off():
 
 def get_state():
     mode_data = get(MODE_URL, HEADERS)
+    mode = mode_data[MODE]
 
-    saved_states = load_saved_states()
-    saved_states.setdefault(ARG_IP, {})['mode'] = mode_data[MODE]
-    save_states(saved_states)
+    if mode != MODE_OFF:
+        saved_states = load_saved_states()
+        saved_states.setdefault(ARG_IP, {})['mode'] = mode
+        save_states(saved_states)
 
     if mode_data[MODE] != MODE_OFF:
         print(1)
